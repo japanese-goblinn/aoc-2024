@@ -1,57 +1,59 @@
-use std::collections::HashMap;
 use std::error::Error;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::iter::zip;
+use std::path::Path;
 
-fn main() -> Result<(), Box<dyn Error>> {
+type Result<T> = std::result::Result<T, Box<dyn Error>>;
+
+fn main() -> Result<()> {
   println!("{}", first()?);
   println!("{}", second()?);
   Ok(())
 }
 
-fn second() -> Result<i32, Box<dyn Error>> {
-  let mut first_column_numbers = Vec::new();
-  let mut second_column_numbers = HashMap::new();
-  let file = File::open("day1.txt")?;
-  let lines = BufReader::new(file).lines();
-  for line in lines {
-    if let Ok(paresed_line) = line { 
-      let parts = paresed_line.split_whitespace().collect::<Vec<_>>();
-      let first_num: i32 = parts[0].parse().unwrap();
-      let second_num: i32 = parts[1].parse().unwrap();
-      first_column_numbers.push(first_num);
-      *second_column_numbers.entry(second_num).or_insert(0) += 1;
-    }
-  }
-  let mut result = 0;
-  for v in &first_column_numbers {
-    if let Some(s) = second_column_numbers.get(v) {
-      result += v * s;
-    }
-  }
-  Ok(result)
+fn lines_of_file<P: AsRef<Path>>(path: P) -> Result<impl Iterator<Item = String>> {
+  let file = File::open(path)?;
+  Ok(BufReader::new(file).lines().map(|l| l.unwrap()))
 }
 
-fn first() -> Result<i32, Box<dyn Error>> { 
-  let mut first_column_numbers = Vec::new();
-  let mut second_column_numbers = Vec::new();
-  let file = File::open("day1.txt")?;
-  let lines = BufReader::new(file).lines();
-  for line in lines {
-    if let Ok(paresed_line) = line { 
-       let parts = paresed_line.split_whitespace().collect::<Vec<_>>();
-       let first_num: i32 = parts[0].parse().unwrap();
-       let second_num: i32 = parts[1].parse().unwrap();
-       first_column_numbers.push(first_num);
-       second_column_numbers.push(second_num);
-    }
+fn second() -> Result<i32> {
+  let mut first_column_numbers = Vec::<i32>::new();
+  let mut second_column_numbers = HashMap::<i32, i32>::new();
+
+  for line in lines_of_file("day1.txt")? {
+      let mut iter = line.split_whitespace();
+      first_column_numbers
+        .push(iter.next().unwrap().parse().unwrap());
+      *second_column_numbers
+        .entry(iter.next().unwrap().parse().unwrap())
+        .or_insert(0) += 1;
   }
+
+  Ok(first_column_numbers.into_iter()
+    .filter_map(|num| 
+      second_column_numbers.get(&num).map(|score| num * score)
+    )
+    .sum())
+}
+
+fn first() -> Result<i32> { 
+  let mut first_column_numbers = vec![];
+  let mut second_column_numbers = vec![];
+
+  for line in lines_of_file("day1.txt")? {
+    let mut iter = line.split_whitespace();
+    first_column_numbers.push(iter.next().unwrap().parse::<i32>().unwrap());
+    second_column_numbers.push(iter.next().unwrap().parse::<i32>().unwrap());
+
+  }
+  
   first_column_numbers.sort();
   second_column_numbers.sort();
 
   Ok(zip(first_column_numbers, second_column_numbers).fold(
     0, 
-    |acc, x,| acc + (x.0 - x.1).abs()
+    |acc, pair,| acc + (pair.0 - pair.1).abs()
   ))
 }
