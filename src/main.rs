@@ -1,59 +1,100 @@
-use std::error::Error;
-use std::collections::HashMap;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
-use std::iter::zip;
-use std::path::Path;
+use core::num;
+use std::{error::Error, fs::File, io::{BufRead, BufReader}, iter::zip, path::Path};
 
-type Result<T> = std::result::Result<T, Box<dyn Error>>;
+pub(crate) type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
-fn main() -> Result<()> {
-  println!("{}", first()?);
-  println!("{}", second()?);
-  Ok(())
-}
-
-fn lines_of_file<P: AsRef<Path>>(path: P) -> Result<impl Iterator<Item = String>> {
+pub(crate) fn lines_of_file<P: AsRef<Path>>(path: P) -> Result<impl Iterator<Item = String>> {
   let file = File::open(path)?;
   Ok(BufReader::new(file).lines().map(|l| l.unwrap()))
 }
 
-fn second() -> Result<i32> {
-  let mut first_column_numbers = Vec::<i32>::new();
-  let mut second_column_numbers = HashMap::<i32, i32>::new();
+fn main() -> Result<()> {
+  let f = vec![1, 2, 3, 4];
 
-  for line in lines_of_file("day1.txt")? {
-      let mut iter = line.split_whitespace();
-      first_column_numbers
-        .push(iter.next().unwrap().parse().unwrap());
-      *second_column_numbers
-        .entry(iter.next().unwrap().parse().unwrap())
-        .or_insert(0) += 1;
-  }
+  // println!("{}", first()?);
+  // println!("{}", second()?);
 
-  Ok(first_column_numbers.into_iter()
-    .filter_map(|num| 
-      second_column_numbers.get(&num).map(|score| num * score)
-    )
-    .sum())
+  // println!("{}", day1::first()?);
+  // println!("{}", day1::second()?);
+  Ok(())
 }
 
-fn first() -> Result<i32> { 
-  let mut first_column_numbers = vec![];
-  let mut second_column_numbers = vec![];
+#[derive(PartialEq)]
+enum Growth {
+  Increasing,
+  Decreasing
+}
 
-  for line in lines_of_file("day1.txt")? {
-    let mut iter = line.split_whitespace();
-    first_column_numbers.push(iter.next().unwrap().parse::<i32>().unwrap());
-    second_column_numbers.push(iter.next().unwrap().parse::<i32>().unwrap());
+fn second() -> Result<i32> {
+  let mut safe_count = 0;
 
+  for line in lines_of_file("day2.txt")? {
+    let nums = line.split_whitespace()
+      .filter_map(|num| num.parse::<i32>().ok() );
+    let mut is_safe = false;
+    let mut growth: Option<Growth> = None;
+    for (f, s) in zip(nums.clone(), nums.skip(1)) {
+      let diff = f - s;
+      let distance = diff.abs();
+      is_safe = distance >= 1 && distance <= 3;
+      if !is_safe {
+        break
+      }
+      let current_growth = if diff < 0 {
+        Growth::Decreasing
+      } else {
+        Growth::Increasing
+      };
+      if let Some(_growth) = &growth {
+        if *_growth != current_growth {
+          break;
+        }
+      } else {
+        growth = Some(current_growth)
+      }
+    }
+    if is_safe && growth != None {
+      safe_count += 1;
+    }
   }
-  
-  first_column_numbers.sort();
-  second_column_numbers.sort();
 
-  Ok(zip(first_column_numbers, second_column_numbers).fold(
-    0, 
-    |acc, pair,| acc + (pair.0 - pair.1).abs()
-  ))
+  Ok(safe_count)
+}
+
+fn first() -> Result<i32> {
+  let mut safe_count = 0;
+  for line in lines_of_file("day2.txt")? {
+    let nums = line.split_whitespace()
+      .filter_map(|num| num.parse::<i32>().ok() );
+    let mut is_safe = false;
+    let mut growth: Option<Growth> = None;
+    for (f, s) in zip(nums.clone(), nums.skip(1)) {
+      let diff = f - s;
+      let distance = diff.abs();
+      is_safe = distance >= 1 && distance <= 3;
+      if !is_safe {
+        break
+      }
+      let current_growth = if diff < 0 {
+        Growth::Decreasing
+      } else {
+        Growth::Increasing
+      };
+      if let Some(_growth) = &growth {
+        if *_growth != current_growth {
+          growth = None;
+          break;
+        }
+      } else {
+        growth = Some(current_growth)
+      }
+    }
+    if is_safe && growth != None {
+      safe_count += 1;
+    }
+  }
+
+  
+
+  Ok(safe_count)
 }
